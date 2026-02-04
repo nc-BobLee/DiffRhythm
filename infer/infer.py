@@ -23,6 +23,13 @@ import torch
 import torchaudio
 from einops import rearrange
 
+from optimum.habana.transformers.modeling_utils import adapt_transformers_to_gaudi
+adapt_transformers_to_gaudi()
+
+import habana_frameworks.torch as ht
+import habana_frameworks.torch.core as htcore
+import habana_frameworks.torch.gpu_migration
+
 print("Current working directory:", os.getcwd())
 
 from infer_utils import (
@@ -224,5 +231,5 @@ if __name__ == "__main__":
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
 
-    output_path = os.path.join(output_dir, "output.wav")
+    output_path = os.path.join(output_dir, "output_hpu.wav")
     torchaudio.save(output_path, generated_song, sample_rate=44100)
