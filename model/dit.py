@@ -25,7 +25,7 @@ import torch
 from torch import nn
 import torch
 
-from transformers.models.llama.modeling_llama import LlamaDecoderLayer, LlamaRotaryEmbedding
+from .modeling_llama import LlamaDecoderLayer, LlamaRotaryEmbedding
 from transformers.models.llama import LlamaConfig
 
 from model.modules import (
@@ -37,6 +37,8 @@ from model.modules import (
     get_pos_embed_indices,
     _prepare_decoder_attention_mask,
 )
+
+import habana_frameworks.torch.core as htcore
 
 # Text embedding
 class TextEmbedding(nn.Module):
@@ -211,9 +213,11 @@ class DiT(nn.Module):
         )
 
         for i, block in enumerate(self.transformer_blocks):
+            htcore.mark_step()
             x, *_ = block(x, attention_mask=attention_mask, position_embeddings=rotary_embed)
             if i < self.depth // 2:
                 x = x + self.text_fusion_linears[i](text_embed)
+        htcore.mark_step()
 
         if self.long_skip_connection is not None:
             x = self.long_skip_connection(torch.cat((x, residual), dim=-1))
