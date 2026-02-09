@@ -18,9 +18,9 @@ import argparse
 import os
 import time
 import random
+import soundfile as sf
 
 import torch
-import torchaudio
 from einops import rearrange
 
 from optimum.habana.transformers.modeling_utils import adapt_transformers_to_gaudi
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
     device = "cpu"
     if torch.cuda.is_available():
-        device = "cuda"
+        device = "hpu"
     elif torch.mps.is_available():
         device = "mps"
 
@@ -231,5 +231,7 @@ if __name__ == "__main__":
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
 
-    output_path = os.path.join(output_dir, "output_hpu.wav")
-    torchaudio.save(output_path, generated_song, sample_rate=44100)
+    output_path = os.path.join(output_dir, f"output_{device}.wav")
+
+    sf.write(output_path, generated_song.t(), 44100, subtype='PCM_16')
+    print(f'save {output_path} done')

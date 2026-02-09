@@ -109,6 +109,8 @@ class CFM(nn.Module):
         
         self.max_frames = max_frames
 
+        self.infer_step = 0
+
     @property
     def device(self):
         return next(self.parameters()).device
@@ -204,6 +206,8 @@ class CFM(nn.Module):
         song_duration = song_duration.repeat(batch_infer_num)
 
         def fn(t, x):
+            print(f'run {device} inference step:{self.infer_step}')
+            self.infer_step += 1
             # predict flow
             pred = self.transformer(
                 x=x, cond=step_cond, text=text, time=t, drop_audio_cond=False, drop_text=False, drop_prompt=False,
