@@ -19,6 +19,7 @@ import os
 import time
 import random
 import soundfile as sf
+import numpy as np
 
 import torch
 from einops import rearrange
@@ -31,6 +32,13 @@ import habana_frameworks.torch.core as htcore
 import habana_frameworks.torch.gpu_migration
 
 print("Current working directory:", os.getcwd())
+
+def set_seed():
+    seed = 5451
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
 
 from infer_utils import (
     decode_audio,
@@ -96,6 +104,7 @@ def inference(
 
 
 if __name__ == "__main__":
+    set_seed()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--lrc-path",
