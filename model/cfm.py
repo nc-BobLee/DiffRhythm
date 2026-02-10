@@ -143,8 +143,8 @@ class CFM(nn.Module):
     ):
         self.eval()
 
-        if next(self.parameters()).dtype == torch.float16:
-            cond = cond.half()
+        if next(self.parameters()).dtype == torch.bfloat16:
+            cond = cond.bfloat16()
 
         # raw wave
         if cond.shape[1] > duration:
@@ -245,6 +245,7 @@ class CFM(nn.Module):
             t = t + sway_sampling_coef * (torch.cos(torch.pi / 2 * t) - 1 + t)
 
         trajectory = odeint(fn, y0, t, **self.odeint_kwargs)
+        self.infer_step = 0
 
         sampled = trajectory[-1]
         out = sampled

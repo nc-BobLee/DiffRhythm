@@ -287,7 +287,7 @@ def get_negative_style_prompt(device):
     vocal_stlye = np.load(file_path)
 
     vocal_stlye = torch.from_numpy(vocal_stlye).to(device)  # [1, 512]
-    vocal_stlye = vocal_stlye.half()
+    vocal_stlye = vocal_stlye.bfloat16()
 
     return vocal_stlye
 
@@ -297,7 +297,7 @@ def get_style_prompt(model, wav_path=None, prompt=None):
     mulan = model
 
     if prompt is not None:
-        return mulan(texts=prompt).half()
+        return mulan(texts=prompt).bfloat16()
 
     ext = os.path.splitext(wav_path)[-1].lower()
     if ext == ".mp3":
@@ -325,7 +325,7 @@ def get_style_prompt(model, wav_path=None, prompt=None):
         audio_emb = mulan(wavs=wav)  # [1, 512]
 
     audio_emb = audio_emb
-    audio_emb = audio_emb.half()
+    audio_emb = audio_emb.bfloat16()
 
     return audio_emb
 
@@ -423,16 +423,16 @@ def get_lrc_token(max_frames, text, tokenizer, max_secs, device):
     lrc_emb = lrc.unsqueeze(0).to(device)
 
     normalized_start_time = torch.tensor(normalized_start_time).unsqueeze(0).to(device)
-    normalized_start_time = normalized_start_time.half()
+    normalized_start_time = normalized_start_time.bfloat16()
     
     normalized_duration = torch.tensor(normalized_duration).unsqueeze(0).to(device)
-    normalized_duration = normalized_duration.half()
+    normalized_duration = normalized_duration.bfloat16()
 
     return lrc_emb, normalized_start_time, end_frame, normalized_duration
 
 
 def load_checkpoint(model, ckpt_path, device, use_ema=True):
-    model = model.half()
+    model = model.bfloat16()
 
     ckpt_type = ckpt_path.split(".")[-1]
     if ckpt_type == "safetensors":
