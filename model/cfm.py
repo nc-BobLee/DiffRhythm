@@ -31,6 +31,9 @@ from torch.nn.utils.rnn import pad_sequence
 
 from torchdiffeq import odeint
 
+import habana_frameworks.torch as ht
+import habana_frameworks.torch.core as htcore
+
 from model.utils import (
     exists,
     list_str_to_idx,
@@ -93,6 +96,7 @@ class CFM(nn.Module):
 
         # transformer
         self.transformer = transformer
+        self.transformer = ht.hpu.wrap_in_hpu_graph(self.transformer)
         dim = transformer.dim
         self.dim = dim
 
