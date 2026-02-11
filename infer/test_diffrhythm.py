@@ -17,6 +17,7 @@
 import argparse
 import os
 import time
+import time as tm_perf
 import random
 import soundfile as sf
 import numpy as np
@@ -50,6 +51,22 @@ from infer_utils import (
 )
 
 
+class time_box_t():
+    def __init__(self):
+        self.t0=None
+
+    def start(self):
+        self.t0 = tm_perf.perf_counter()
+
+    def show_time(self, desc):
+        torch.cuda.synchronize()
+        t1 = tm_perf.perf_counter()
+        duration = t1-self.t0
+        self.t0 = t1
+        print(f'{desc} duration:{duration:.3f}s')
+
+time_box = time_box_t()
+
 def inference(
     cfm_model,
     vae_model,
@@ -64,6 +81,7 @@ def inference(
     song_duration,
     chunked=False,
 ):
+    time_box.start()
     with torch.inference_mode():
         latents, _ = cfm_model.sample(
             cond=cond,
@@ -79,6 +97,7 @@ def inference(
             latent_pred_segments=pred_frames,
             batch_infer_num=batch_infer_num
         )
+        time_box.show_time('cfm sample')
 
         outputs = []
         for latent in latents:
@@ -99,6 +118,7 @@ def inference(
                 .cpu()
             )
             outputs.append(output)
+        time_box.show_time('vae decode')
 
         return outputs
 
@@ -206,6 +226,8 @@ if __name__ == "__main__":
         )
 
     cfm, tokenizer, muq, vae = prepare_model(max_frames, device)
+    vae.forward = vae.decode_export
+    vae = ht.hpu.wrap_in_hpu_graph(vae)
 
     if args.lrc_path:
         with open(args.lrc_path, "r", encoding='utf-8') as f:

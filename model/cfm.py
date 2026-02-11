@@ -210,7 +210,7 @@ class CFM(nn.Module):
         song_duration = song_duration.repeat(batch_infer_num)
 
         def fn(t, x):
-            print(f'run {device} inference step:{self.infer_step}')
+            #print(f'run {device} inference step:{self.infer_step}')
             self.infer_step += 1
             # predict flow
             pred = self.transformer(
