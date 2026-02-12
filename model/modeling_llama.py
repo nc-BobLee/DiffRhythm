@@ -38,7 +38,6 @@ from transformers.utils import (
 from transformers.models.llama.configuration_llama import LlamaConfig
 import os
 
-from optimum.habana.diffusers.models.attention_processor import FlashAttnV3Gaudi
 from habana_frameworks.torch.hpex.kernels import FusedSDPA
 from habana_frameworks.torch.hpex.kernels import RotaryPosEmbeddingMode, apply_rotary_pos_emb
 
