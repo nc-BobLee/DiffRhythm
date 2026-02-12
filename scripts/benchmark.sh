@@ -12,4 +12,4 @@ python3 infer/test_diffrhythm.py \
     --output-dir infer/example/output \
     --chunked \
     --batch-infer-num 5 \
-    --loop 5 \
+    --loop 15 \
