@@ -21,6 +21,7 @@
 
 from __future__ import annotations
 
+import os
 import torch
 from torch import nn
 import torch
@@ -95,6 +96,7 @@ class InputEmbedding(nn.Module):
         return x
 
 
+BUCKET_SIZE = 256
 # Transformer backbone using Llama blocks
 class DiT(nn.Module):
     def __init__(
@@ -194,6 +196,15 @@ class DiT(nn.Module):
 
         x = self.input_embed(x, cond, text_embed, style_embed, c, drop_audio_cond=drop_audio_cond)
 
+        use_bucket = "1" == os.getenv("USE_DIFFRHYTHM_BUCKET", "0")
+        bucket_total_len = seq_len
+        if use_bucket:
+            bucket_total_len = (seq_len // BUCKET_SIZE + 1)*BUCKET_SIZE
+            bucket_pad_len = bucket_total_len - seq_len
+            x = torch.nn.functional.pad(x, (0, 0, 0, bucket_pad_len), value=0.0)
+            text_embed = torch.nn.functional.pad(text_embed, (0, 0, 0, bucket_pad_len), value=0.0)
+
+
         if self.long_skip_connection is not None:
             residual = x
 
@@ -202,22 +213,24 @@ class DiT(nn.Module):
         rotary_embed = self.rotary_emb(x, pos_ids)
         
         attention_mask = torch.ones(
-            (batch, seq_len),
+            (batch, bucket_total_len),
             dtype=torch.bool,
             device=x.device,
         )
         attention_mask = _prepare_decoder_attention_mask(
             attention_mask,
-            (batch, seq_len),
+            (batch, bucket_total_len),
             x,
         )
 
         for i, block in enumerate(self.transformer_blocks):
             htcore.mark_step()
+            #print(f'LlamaDecoderLayer x:{x.shape} attention_mask:{attention_mask.shape} rotary_embed:{rotary_embed[0].shape} text_embed:{text_embed.shape}')
             x, *_ = block(x, attention_mask=attention_mask, position_embeddings=rotary_embed)
             if i < self.depth // 2:
                 x = x + self.text_fusion_linears[i](text_embed)
         htcore.mark_step()
+        x = x[:, :seq_len, ...]
 
         if self.long_skip_connection is not None:
             x = self.long_skip_connection(torch.cat((x, residual), dim=-1))

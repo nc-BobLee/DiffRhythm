@@ -1,6 +1,7 @@
 cd "$(dirname "$0")"
 cd ../
 
+export USE_DIFFRHYTHM_BUCKET=1
 export PT_HPU_LAZY_MODE=1
 export HF_ENDPOINT=https://hf-mirror.com
 export PYTHONPATH=$PYTHONPATH:$PWD
