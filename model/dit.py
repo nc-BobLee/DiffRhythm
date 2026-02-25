@@ -230,7 +230,8 @@ class DiT(nn.Module):
             if i < self.depth // 2:
                 x = x + self.text_fusion_linears[i](text_embed)
         htcore.mark_step()
-        x = x[:, :seq_len, ...]
+        if use_bucket:
+            x = x[:, :seq_len, ...]
 
         if self.long_skip_connection is not None:
             x = self.long_skip_connection(torch.cat((x, residual), dim=-1))
