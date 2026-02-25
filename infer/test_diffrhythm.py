@@ -122,6 +122,52 @@ def inference(
 
         return outputs
 
+def test_main(args, cfm, tokenizer, muq, vae, max_frames):
+    if args.lrc_path:
+        with open(args.lrc_path, "r", encoding='utf-8') as f:
+            lrc = f.read()
+    else:
+        lrc = ""
+    lrc_prompt, start_time, end_frame, song_duration = get_lrc_token(max_frames, lrc, tokenizer, args.audio_length, device)
+
+    if args.ref_audio_path:
+        style_prompt = get_style_prompt(muq, args.ref_audio_path)
+    else:
+        style_prompt = get_style_prompt(muq, prompt=args.ref_prompt)
+
+    negative_style_prompt = get_negative_style_prompt(device)
+
+    latent_prompt, pred_frames = get_reference_latent(device, max_frames, args.edit, args.edit_segments, args.ref_song, vae)
+
+    print(f'baymax latent_prompt:{latent_prompt.shape} lrc_prompt:{lrc_prompt.shape}')
+
+    for i in range(args.loop):
+        s_t = time.time()
+        generated_songs = inference(
+            cfm_model=cfm,
+            vae_model=vae,
+            cond=latent_prompt,
+            text=lrc_prompt,
+            duration=end_frame,
+            style_prompt=style_prompt,
+            negative_style_prompt=negative_style_prompt,
+            start_time=start_time,
+            pred_frames=pred_frames,
+            chunked=args.chunked,
+            batch_infer_num=args.batch_infer_num,
+            song_duration=song_duration
+        )
+        torch.hpu.synchronize()
+        duration = time.time() - s_t
+        print("DiffRhythm Pipeline Latency in Loop #{:d}: {:.1f} sec".format(i, duration))
+    
+    generated_song = random.sample(generated_songs, 1)[0]
+
+    output_dir = args.output_dir
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"output_{device}_len_{args.audio_length}.wav")
+    sf.write(output_path, generated_song.t(), 44100, subtype='PCM_16')
+    print(f'save {output_path} done')
 
 if __name__ == "__main__":
     set_seed()
@@ -227,49 +273,14 @@ if __name__ == "__main__":
 
     cfm, tokenizer, muq, vae = prepare_model(max_frames, device)
     vae.forward = vae.decode_export
-    vae = ht.hpu.wrap_in_hpu_graph(vae)
+    #vae = ht.hpu.wrap_in_hpu_graph(vae)
 
-    if args.lrc_path:
-        with open(args.lrc_path, "r", encoding='utf-8') as f:
-            lrc = f.read()
-    else:
-        lrc = ""
-    lrc_prompt, start_time, end_frame, song_duration = get_lrc_token(max_frames, lrc, tokenizer, audio_length, device)
+    test_main(args, cfm, tokenizer, muq, vae, max_frames)
+    htcore.mark_step()
 
-    if args.ref_audio_path:
-        style_prompt = get_style_prompt(muq, args.ref_audio_path)
-    else:
-        style_prompt = get_style_prompt(muq, prompt=args.ref_prompt)
+    args.audio_length = 129
+    test_main(args, cfm, tokenizer, muq, vae, max_frames)
 
-    negative_style_prompt = get_negative_style_prompt(device)
-
-    latent_prompt, pred_frames = get_reference_latent(device, max_frames, args.edit, args.edit_segments, args.ref_song, vae)
-
-    for i in range(args.loop):
-        s_t = time.time()
-        generated_songs = inference(
-            cfm_model=cfm,
-            vae_model=vae,
-            cond=latent_prompt,
-            text=lrc_prompt,
-            duration=end_frame,
-            style_prompt=style_prompt,
-            negative_style_prompt=negative_style_prompt,
-            start_time=start_time,
-            pred_frames=pred_frames,
-            chunked=args.chunked,
-            batch_infer_num=args.batch_infer_num,
-            song_duration=song_duration
-        )
-        torch.hpu.synchronize()
-        duration = time.time() - s_t
-        print("DiffRhythm Pipeline Latency in Loop #{:d}: {:.1f} sec".format(i, duration))
-    
-    generated_song = random.sample(generated_songs, 1)[0]
-
-    output_dir = args.output_dir
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"output_{device}.wav")
-    sf.write(output_path, generated_song.t(), 44100, subtype='PCM_16')
-    print(f'save {output_path} done')
+    args.audio_length = 131
+    test_main(args, cfm, tokenizer, muq, vae, max_frames)
 

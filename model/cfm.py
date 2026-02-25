@@ -96,7 +96,7 @@ class CFM(nn.Module):
 
         # transformer
         self.transformer = transformer
-        self.transformer = ht.hpu.wrap_in_hpu_graph(self.transformer)
+        #self.transformer = ht.hpu.wrap_in_hpu_graph(self.transformer)
         dim = transformer.dim
         self.dim = dim
 

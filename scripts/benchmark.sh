@@ -3,6 +3,7 @@ cd ../
 
 export USE_DIFFRHYTHM_BUCKET=1
 export PT_HPU_LAZY_MODE=1
+export PT_HPU_MAX_COMPOUND_OP_SIZE=4096
 export HF_ENDPOINT=https://hf-mirror.com
 export PYTHONPATH=$PYTHONPATH:$PWD
 
@@ -13,4 +14,4 @@ python3 infer/test_diffrhythm.py \
     --output-dir infer/example/output \
     --chunked \
     --batch-infer-num 5 \
-    --loop 15 \
+    --loop 5 \
