@@ -29,6 +29,7 @@ from sys import path
 path.append(os.getcwd())
 
 from model import DiT, CFM
+import habana_frameworks.torch.core as htcore
 
 def vae_sample(mean, scale):
     stdev = torch.nn.functional.softplus(scale) + 1e-4
@@ -110,6 +111,7 @@ def decode_audio(latents, vae_model, chunked=False, overlap=32, chunk_size=128):
         chunks = []
         i = 0
         for i in range(0, total_size - chunk_size + 1, hop_size):
+            htcore.mark_step()
             chunk = latents[:, :, i : i + chunk_size]
             chunks.append(chunk)
         if i + chunk_size != total_size:
@@ -117,6 +119,7 @@ def decode_audio(latents, vae_model, chunked=False, overlap=32, chunk_size=128):
             chunk = latents[:, :, -chunk_size:]
             chunks.append(chunk)
         chunks = torch.stack(chunks)
+        htcore.mark_step()
         num_chunks = chunks.shape[0]
         # samples_per_latent is just the downsampling ratio
         samples_per_latent = downsampling_ratio
@@ -124,6 +127,7 @@ def decode_audio(latents, vae_model, chunked=False, overlap=32, chunk_size=128):
         y_size = total_size * samples_per_latent
         y_final = torch.zeros((batch_size, io_channels, y_size)).to(latents.device)
         for i in range(num_chunks):
+            htcore.mark_step()
             x_chunk = chunks[i, :]
             # decode the chunk
             y_chunk = vae_model.decode_export(x_chunk)
@@ -135,6 +139,7 @@ def decode_audio(latents, vae_model, chunked=False, overlap=32, chunk_size=128):
             else:
                 t_start = i * hop_size * samples_per_latent
                 t_end = t_start + chunk_size * samples_per_latent
+            htcore.mark_step()
             #  remove the edges of the overlaps
             ol = (overlap // 2) * samples_per_latent
             chunk_start = 0
@@ -148,6 +153,7 @@ def decode_audio(latents, vae_model, chunked=False, overlap=32, chunk_size=128):
                 t_end -= ol
                 chunk_end -= ol
             # paste the chunked audio into our y_final output audio
+            htcore.mark_step()
             y_final[:, :, t_start:t_end] = y_chunk[:, :, chunk_start:chunk_end]
         return y_final
 

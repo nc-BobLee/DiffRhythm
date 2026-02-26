@@ -97,9 +97,10 @@ def inference(
             latent_pred_segments=pred_frames,
             batch_infer_num=batch_infer_num
         )
-        time_box.show_time('cfm sample')
+        #time_box.show_time('cfm sample')
 
         outputs = []
+        outputs_tmp = []
         for latent in latents:
             latent = latent.to(torch.float32)
             latent = latent.transpose(1, 2)  # [b d t]
@@ -109,6 +110,18 @@ def inference(
             # Rearrange audio batch to a single sequence
             output = rearrange(output, "b d n -> d (b n)")
             # Peak normalize, clip, convert to int16, and save to file
+            #output = (
+            #    output.to(torch.float32)
+            #    .div(torch.max(torch.abs(output)))
+            #    .clamp(-1, 1)
+            #    .mul(32767)
+            #    .to(torch.int16)
+            #    .cpu()
+            #)
+            #outputs.append(output)
+            outputs_tmp.append(output)
+
+        for output in outputs_tmp:
             output = (
                 output.to(torch.float32)
                 .div(torch.max(torch.abs(output)))
@@ -118,7 +131,8 @@ def inference(
                 .cpu()
             )
             outputs.append(output)
-        time_box.show_time('vae decode')
+
+        #time_box.show_time('vae decode')
 
         return outputs
 
@@ -275,12 +289,7 @@ if __name__ == "__main__":
     vae.forward = vae.decode_export
     #vae = ht.hpu.wrap_in_hpu_graph(vae)
 
-    test_main(args, cfm, tokenizer, muq, vae, max_frames)
-    htcore.mark_step()
-
-    args.audio_length = 129
-    test_main(args, cfm, tokenizer, muq, vae, max_frames)
-
-    args.audio_length = 131
-    test_main(args, cfm, tokenizer, muq, vae, max_frames)
+    for audio_length in range(129, 133):
+        args.audio_length = audio_length
+        test_main(args, cfm, tokenizer, muq, vae, max_frames)
 
