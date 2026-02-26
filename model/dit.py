@@ -25,6 +25,7 @@ import os
 import torch
 from torch import nn
 import torch
+import time as tm_perf
 
 from .modeling_llama import LlamaDecoderLayer, LlamaRotaryEmbedding
 from transformers.models.llama import LlamaConfig
@@ -184,10 +185,14 @@ class DiT(nn.Module):
 
         # t: conditioning time, c: context (text + masked cond audio), x: noised input audio
         t = self.time_embed(time)
+        htcore.mark_step()
         s_t = self.start_time_embed(start_time)
+        htcore.mark_step()
         d_t = self.duration_time_embed(duration) if self.max_frames == 6144 else torch.zeros_like(s_t)
+        htcore.mark_step()
         c = t + s_t + d_t
         text_embed = self.text_embed(text, seq_len, drop_text=drop_text)
+        htcore.mark_step()
 
         if drop_prompt:
             style_prompt = torch.zeros_like(style_prompt)
@@ -195,6 +200,7 @@ class DiT(nn.Module):
         style_embed = style_prompt # [b, 512]
 
         x = self.input_embed(x, cond, text_embed, style_embed, c, drop_audio_cond=drop_audio_cond)
+        htcore.mark_step()
 
         use_bucket = "1" == os.getenv("USE_DIFFRHYTHM_BUCKET", "0")
         bucket_total_len = seq_len
@@ -225,7 +231,6 @@ class DiT(nn.Module):
 
         for i, block in enumerate(self.transformer_blocks):
             htcore.mark_step()
-            #print(f'LlamaDecoderLayer x:{x.shape} attention_mask:{attention_mask.shape} rotary_embed:{rotary_embed[0].shape} text_embed:{text_embed.shape}')
             x, *_ = block(x, attention_mask=attention_mask, position_embeddings=rotary_embed)
             if i < self.depth // 2:
                 x = x + self.text_fusion_linears[i](text_embed)
